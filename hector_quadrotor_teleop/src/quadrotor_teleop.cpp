@@ -29,6 +29,7 @@
 #include <ros/ros.h>
 #include <sensor_msgs/Joy.h>
 #include <geometry_msgs/TwistStamped.h>
+#include <geometry_msgs/Twist.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <hector_uav_msgs/YawrateCommand.h>
 #include <hector_uav_msgs/ThrustCommand.h>
@@ -128,9 +129,9 @@ public:
     ros::NodeHandle robot_nh;
 
     // TODO factor out
-    robot_nh.param<std::string>("base_link_frame", base_link_frame_, "base_link");
+    robot_nh.param<std::string>("base_link_frame", base_link_frame_, "base_link_frd");
     robot_nh.param<std::string>("world_frame", world_frame_, "world");
-    robot_nh.param<std::string>("base_stabilized_frame", base_stabilized_frame_, "base_stabilized");
+    robot_nh.param<std::string>("base_stabilized_frame", base_stabilized_frame_, "base_link_frd");
 
     if (control_mode == "attitude")
     {
@@ -156,7 +157,7 @@ public:
 
       joy_subscriber_ = node_handle_.subscribe<sensor_msgs::Joy>("joy", 1,
                                                                  boost::bind(&Teleop::joyTwistCallback, this, _1));
-      velocity_publisher_ = robot_nh.advertise<geometry_msgs::TwistStamped>("command/twist",
+      velocity_publisher_ = robot_nh.advertise<geometry_msgs::Twist>("command/twist",
                                                                                 10);
     }
     else if (control_mode == "position")
@@ -237,20 +238,18 @@ public:
 
   void joyTwistCallback(const sensor_msgs::JoyConstPtr &joy)
   {
-    geometry_msgs::TwistStamped velocity;
-    velocity.header.frame_id = base_stabilized_frame_;
-    velocity.header.stamp = ros::Time::now();
+    geometry_msgs::Twist velocity;
 
-    velocity.twist.linear.x = getAxis(joy, axes_.x);
-    velocity.twist.linear.y = getAxis(joy, axes_.y);
-    velocity.twist.linear.z = getAxis(joy, axes_.z);
-    velocity.twist.angular.z = getAxis(joy, axes_.yaw) * M_PI/180.0;
+    velocity.linear.x = getAxis(joy, axes_.x);
+    velocity.linear.y = getAxis(joy, axes_.y);
+    velocity.linear.z = getAxis(joy, axes_.z);
+    velocity.angular.z = getAxis(joy, axes_.yaw) * M_PI/180.0;
     if (getButton(joy, buttons_.slow))
     {
-      velocity.twist.linear.x *= slow_factor_;
-      velocity.twist.linear.y *= slow_factor_;
-      velocity.twist.linear.z *= slow_factor_;
-      velocity.twist.angular.z *= slow_factor_;
+      velocity.linear.x *= slow_factor_;
+      velocity.linear.y *= slow_factor_;
+      velocity.linear.z *= slow_factor_;
+      velocity.angular.z *= slow_factor_;
     }
     velocity_publisher_.publish(velocity);
 
